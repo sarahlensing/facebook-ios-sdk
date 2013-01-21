@@ -123,7 +123,10 @@ static FBSession *g_activeSession = nil;
                              accountType:(id)accountType
                              permissions:(NSArray*)permissions
                          defaultAudience:(FBSessionDefaultAudience)defaultAudience
-                           isReauthorize:(BOOL)isReauthorize;
+                           isReauthorize:(BOOL)isReauthorize
+                               fbAppAuth:(BOOL)fbAppAuth
+                              safariAuth:(BOOL)safariAuth
+                                fallback:(BOOL)fallback;
 - (BOOL)handleOpenURLPreOpen:(NSDictionary*)parameters
                  accessToken:(NSString*)accessToken
                    loginType:(FBSessionLoginType)loginType;
@@ -829,10 +832,16 @@ static FBSession *g_activeSession = nil;
                         behavior:(FBSessionLoginBehavior)behavior
                  defaultAudience:(FBSessionDefaultAudience)audience
                    isReauthorize:(BOOL)isReauthorize {
-    BOOL tryIntegratedAuth = behavior == FBSessionLoginBehaviorUseSystemAccountIfPresent;
+    BOOL tryIntegratedAuth = (behavior == FBSessionLoginBehaviorUseSystemAccountIfPresent) ||
+                                (behavior == FBSessionLoginBehaviorUseSystemAccountIfPresentNoWebView);
     BOOL tryFacebookLogin = (behavior == FBSessionLoginBehaviorUseSystemAccountIfPresent) ||
+                            (behavior == FBSessionLoginBehaviorUseSystemAccountIfPresentNoWebView) ||
+                            (behavior == FBSessionLoginBehaviorFacebookAppNoWebView) ||
                             (behavior == FBSessionLoginBehaviorWithFallbackToWebView) ||
                             (behavior == FBSessionLoginBehaviorWithNoFallbackToWebView);
+    BOOL trySafariLogin = (behavior == FBSessionLoginBehaviorUseSystemAccountIfPresent) ||
+                            (behavior == FBSessionLoginBehaviorWithFallbackToWebView) ||
+                           (behavior == FBSessionLoginBehaviorForcingWebView);
     BOOL tryFallback =  (behavior == FBSessionLoginBehaviorWithFallbackToWebView) ||
                         (behavior == FBSessionLoginBehaviorForcingWebView);
     
@@ -840,7 +849,7 @@ static FBSession *g_activeSession = nil;
                    defaultAudience:audience
                     integratedAuth:tryIntegratedAuth
                          FBAppAuth:tryFacebookLogin
-                        safariAuth:tryFacebookLogin
+                        safariAuth:trySafariLogin
                           fallback:tryFallback
                      isReauthorize:isReauthorize];
 }
@@ -895,7 +904,10 @@ static FBSession *g_activeSession = nil;
                                    accountType:accountTypeFB
                                    permissions:permissions
                                defaultAudience:defaultAudience
-                                  isReauthorize:isReauthorize];
+                                  isReauthorize:isReauthorize
+                                     fbAppAuth:tryFBAppAuth
+                                    safariAuth:trySafariAuth
+                                      fallback:tryFallback];
     }
 
     // if the device is running a version of iOS that supports multitasking,
@@ -967,7 +979,10 @@ static FBSession *g_activeSession = nil;
                              accountType:(ACAccountType*)accountType
                              permissions:(NSArray*)permissions
                          defaultAudience:(FBSessionDefaultAudience)defaultAudience
-                           isReauthorize:(BOOL)isReauthorize {
+                           isReauthorize:(BOOL)isReauthorize
+                               fbAppAuth:(BOOL)fbAppAuth
+                              safariAuth:(BOOL)safariAuth
+                                fallback:(BOOL)fallback {
     
     // app may be asking for nothing, but we will always have an array here
     NSArray *permissionsToUse = permissions ? permissions : [NSArray array];
@@ -1063,9 +1078,9 @@ static FBSession *g_activeSession = nil;
                                                        [self authorizeWithPermissions:permissions
                                                                       defaultAudience:defaultAudience
                                                                        integratedAuth:NO
-                                                                            FBAppAuth:YES
-                                                                           safariAuth:YES
-                                                                             fallback:YES
+                                                                            FBAppAuth:fbAppAuth
+                                                                           safariAuth:safariAuth
+                                                                             fallback:fallback
                                                                         isReauthorize:NO];
                                                    } else {
                                                        // create an error object with additional info regarding failed login
